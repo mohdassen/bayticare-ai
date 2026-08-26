@@ -1,0 +1,2 @@
+import { describe,it,expect } from 'vitest'; import { calculateHomeHealth } from '../lib/health';
+describe('home health',()=>{it('penalizes overdue maintenance',()=>{const now=new Date('2026-01-10');const assets:any=[{status:'HEALTHY',warrantyExpiresAt:new Date('2027-01-01')}];const clean:any=[];const bad:any=[{dueAt:new Date('2026-01-01'),completedAt:null}];expect(calculateHomeHealth(assets,bad,now).score).toBeLessThan(calculateHomeHealth(assets,clean,now).score)})})

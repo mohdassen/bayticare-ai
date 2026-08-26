@@ -1,0 +1,2 @@
+import { redirect } from 'next/navigation'; import { AppShell } from '@/components/AppShell'; import { getCurrentUser } from '@/lib/auth';
+export default async function Page(){const u=await getCurrentUser();if(!u)redirect('/login');return <AppShell><div className="card"><h1>services</h1><p className="muted">هذه الوحدة ضمن المرحلة التالية من BaytiCare AI. البنية الأساسية جاهزة لربطها بالبيانات الحقيقية.</p></div></AppShell>}

@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function Home(){return <main className="hero"><div className="heroBox"><div className="brand" style={{color:'#113b2b'}}>Bayti<span>Care AI</span></div><h1>بيتك يعرف متى يحتاجك</h1><p>نظام تشغيل ذكي للمنزل: أصولك، ضماناتك، الصيانة الوقائية، المصروفات، وصحة المنزل في مكان واحد.</p><div className="actions"><Link className="btn" href="/register">ابدأ مجانًا</Link><Link className="btn secondary" href="/login">تسجيل الدخول</Link></div></div></main>}
