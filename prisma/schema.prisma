@@ -8,6 +8,7 @@ enum AssetStatus { NEW HEALTHY MAINTENANCE_DUE OVERDUE REPAIR_REQUIRED REPLACEME
 enum MaintenanceStatus { SCHEDULED DUE OVERDUE COMPLETED SKIPPED }
 enum BookingStatus { REQUESTED CONFIRMED TECHNICIAN_ASSIGNED ON_THE_WAY ARRIVED IN_PROGRESS COMPLETED CANCELLED DISPUTED }
 enum ProviderStatus { PENDING VERIFIED REJECTED SUSPENDED }
+enum DocumentCategory { INVOICE WARRANTY MANUAL MAINTENANCE_REPORT CONTRACT INSURANCE PROPERTY_DOCUMENT OTHER }
 
 model User {
   id String @id @default(cuid())
@@ -39,6 +40,8 @@ model Property {
   rooms Room[]
   assets Asset[]
   members PropertyMember[]
+  documents Document[]
+  bookings Booking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([ownerId])
@@ -94,6 +97,7 @@ model Asset {
   room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
   maintenance MaintenanceEvent[]
   documents Document[]
+  bookings Booking[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([propertyId])
@@ -119,14 +123,21 @@ model MaintenanceEvent {
 model Document {
   id String @id @default(cuid())
   assetId String?
-  propertyId String?
+  propertyId String
   name String
-  category String
+  originalName String?
+  category DocumentCategory @default(OTHER)
   storageKey String
   mimeType String
+  sizeBytes Int?
   expiresAt DateTime?
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  aiStatus String @default("NOT_ANALYZED")
+  aiMetadata String?
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([propertyId, category])
 }
 
 model Provider {
@@ -135,7 +146,12 @@ model Provider {
   city String
   status ProviderStatus @default(PENDING)
   rating Float @default(0)
+  description String?
+  phone String?
+  categories String @default("")
+  bookings Booking[]
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Booking {
@@ -150,7 +166,22 @@ model Booking {
   price Float?
   notes String?
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  provider Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  history BookingStatusHistory[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@index([userId])
+  @@index([userId, status])
+  @@index([providerId, status])
+}
+
+model BookingStatusHistory {
+  id String @id @default(cuid())
+  bookingId String
+  status BookingStatus
+  note String?
+  createdAt DateTime @default(now())
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  @@index([bookingId, createdAt])
 }
