@@ -7,187 +7,258 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role { SUPER_ADMIN ADMIN SUPPORT_AGENT HOMEOWNER FAMILY_MEMBER PROVIDER_OWNER PROVIDER_MANAGER TECHNICIAN }
-enum PropertyType { VILLA APARTMENT TOWNHOUSE DUPLEX COMPOUND_UNIT OTHER }
-enum OwnershipType { OWNED RENTED }
-enum AssetStatus { NEW HEALTHY MAINTENANCE_DUE OVERDUE REPAIR_REQUIRED REPLACEMENT_RECOMMENDED RETIRED }
-enum MaintenanceStatus { SCHEDULED DUE OVERDUE COMPLETED SKIPPED }
-enum BookingStatus { REQUESTED CONFIRMED TECHNICIAN_ASSIGNED ON_THE_WAY ARRIVED IN_PROGRESS COMPLETED CANCELLED DISPUTED }
-enum ProviderStatus { PENDING VERIFIED REJECTED SUSPENDED }
-enum DocumentCategory { INVOICE WARRANTY MANUAL MAINTENANCE_REPORT CONTRACT INSURANCE PROPERTY_DOCUMENT OTHER }
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SUPPORT_AGENT
+  HOMEOWNER
+  FAMILY_MEMBER
+  PROVIDER_OWNER
+  PROVIDER_MANAGER
+  TECHNICIAN
+}
+
+enum PropertyType {
+  VILLA
+  APARTMENT
+  TOWNHOUSE
+  DUPLEX
+  COMPOUND_UNIT
+  OTHER
+}
+
+enum OwnershipType {
+  OWNED
+  RENTED
+}
+
+enum AssetStatus {
+  NEW
+  HEALTHY
+  MAINTENANCE_DUE
+  OVERDUE
+  REPAIR_REQUIRED
+  REPLACEMENT_RECOMMENDED
+  RETIRED
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  DUE
+  OVERDUE
+  COMPLETED
+  SKIPPED
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  TECHNICIAN_ASSIGNED
+  ON_THE_WAY
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum ProviderStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum DocumentCategory {
+  INVOICE
+  WARRANTY
+  MANUAL
+  MAINTENANCE_REPORT
+  CONTRACT
+  INSURANCE
+  PROPERTY_DOCUMENT
+  OTHER
+}
 
 model User {
-  id String @id @default(cuid())
-  name String
-  email String @unique
-  phone String?
-  passwordHash String
-  role Role @default(HOMEOWNER)
-  locale String @default("ar")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  properties Property[]
+  id                  String             @id @default(cuid())
+  name                String
+  email               String             @unique
+  phone               String?
+  passwordHash        String
+  role                Role               @default(HOMEOWNER)
+  locale              String             @default("ar")
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  properties          Property[]
   propertyMemberships PropertyMember[]
-  maintenanceEvents MaintenanceEvent[]
-  bookings Booking[]
+  maintenanceEvents   MaintenanceEvent[]
+  bookings            Booking[]
 }
 
 model Property {
-  id String @id @default(cuid())
-  ownerId String
-  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  name String
-  type PropertyType
-  ownership OwnershipType
-  city String
-  district String?
+  id               String           @id @default(cuid())
+  ownerId          String
+  owner            User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name             String
+  type             PropertyType
+  ownership        OwnershipType
+  city             String
+  district         String?
   constructionYear Int?
-  floors Floor[]
-  rooms Room[]
-  assets Asset[]
-  members PropertyMember[]
-  documents Document[]
-  bookings Booking[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  floors           Floor[]
+  rooms            Room[]
+  assets           Asset[]
+  members          PropertyMember[]
+  documents        Document[]
+  bookings         Booking[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
   @@index([ownerId])
 }
 
 model PropertyMember {
-  id String @id @default(cuid())
-  propertyId String
-  userId String
-  permissions String @default("VIEW_HOME")
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  propertyId  String
+  userId      String
+  permissions String   @default("VIEW_HOME")
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([propertyId, userId])
 }
 
 model Floor {
-  id String @id @default(cuid())
+  id         String   @id @default(cuid())
   propertyId String
-  name String
-  sortOrder Int @default(0)
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  rooms Room[]
+  name       String
+  sortOrder  Int      @default(0)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  rooms      Room[]
 }
 
 model Room {
-  id String @id @default(cuid())
+  id         String   @id @default(cuid())
   propertyId String
-  floorId String?
-  name String
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  floor Floor? @relation(fields: [floorId], references: [id], onDelete: SetNull)
-  assets Asset[]
+  floorId    String?
+  name       String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  floor      Floor?   @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  assets     Asset[]
 }
 
 model Asset {
-  id String @id @default(cuid())
-  propertyId String
-  roomId String?
-  name String
-  category String
-  manufacturer String?
-  model String?
-  serialNumber String?
-  purchaseDate DateTime?
-  purchasePrice Float?
-  warrantyExpiresAt DateTime?
+  id                      String             @id @default(cuid())
+  propertyId              String
+  roomId                  String?
+  name                    String
+  category                String
+  manufacturer            String?
+  model                   String?
+  serialNumber            String?
+  purchaseDate            DateTime?
+  purchasePrice           Float?
+  warrantyExpiresAt       DateTime?
   maintenanceIntervalDays Int?
-  lastMaintenanceAt DateTime?
-  nextMaintenanceAt DateTime?
-  status AssetStatus @default(HEALTHY)
-  notes String?
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
-  maintenance MaintenanceEvent[]
-  documents Document[]
-  bookings Booking[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  lastMaintenanceAt       DateTime?
+  nextMaintenanceAt       DateTime?
+  status                  AssetStatus        @default(HEALTHY)
+  notes                   String?
+  property                Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  room                    Room?              @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  maintenance             MaintenanceEvent[]
+  documents               Document[]
+  bookings                Booking[]
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
   @@index([propertyId])
 }
 
 model MaintenanceEvent {
-  id String @id @default(cuid())
-  assetId String
-  userId String?
-  title String
-  dueAt DateTime
+  id          String            @id @default(cuid())
+  assetId     String
+  userId      String?
+  title       String
+  dueAt       DateTime
   completedAt DateTime?
-  status MaintenanceStatus @default(SCHEDULED)
-  cost Float?
-  notes String?
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status      MaintenanceStatus @default(SCHEDULED)
+  cost        Float?
+  notes       String?
+  asset       Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user        User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
   @@index([assetId, dueAt])
 }
 
 model Document {
-  id String @id @default(cuid())
-  assetId String?
-  propertyId String
-  name String
+  id           String           @id @default(cuid())
+  assetId      String?
+  propertyId   String
+  name         String
   originalName String?
-  category DocumentCategory @default(OTHER)
-  storageKey String
-  mimeType String
-  sizeBytes Int?
-  expiresAt DateTime?
-  aiStatus String @default("NOT_ANALYZED")
-  aiMetadata String?
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  category     DocumentCategory @default(OTHER)
+  storageKey   String
+  mimeType     String
+  sizeBytes    Int?
+  expiresAt    DateTime?
+  aiStatus     String           @default("NOT_ANALYZED")
+  aiMetadata   String?
+  asset        Asset?           @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  property     Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
   @@index([propertyId, category])
 }
 
 model Provider {
-  id String @id @default(cuid())
-  name String
-  city String
-  status ProviderStatus @default(PENDING)
-  rating Float @default(0)
+  id          String         @id @default(cuid())
+  name        String
+  city        String
+  status      ProviderStatus @default(PENDING)
+  rating      Float          @default(0)
   description String?
-  phone String?
-  categories String @default("")
-  bookings Booking[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  phone       String?
+  categories  String         @default("")
+  bookings    Booking[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
 model Booking {
-  id String @id @default(cuid())
-  userId String
-  propertyId String
-  assetId String?
-  providerId String?
-  category String
-  status BookingStatus @default(REQUESTED)
+  id          String                 @id @default(cuid())
+  userId      String
+  propertyId  String
+  assetId     String?
+  providerId  String?
+  category    String
+  status      BookingStatus          @default(REQUESTED)
   scheduledAt DateTime?
-  price Float?
-  notes String?
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  asset Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
-  provider Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  history BookingStatusHistory[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  price       Float?
+  notes       String?
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property               @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  asset       Asset?                 @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  provider    Provider?              @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  history     BookingStatusHistory[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
   @@index([userId, status])
   @@index([providerId, status])
 }
 
 model BookingStatusHistory {
-  id String @id @default(cuid())
+  id        String        @id @default(cuid())
   bookingId String
-  status BookingStatus
-  note String?
-  createdAt DateTime @default(now())
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status    BookingStatus
+  note      String?
+  createdAt DateTime      @default(now())
+  booking   Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
   @@index([bookingId, createdAt])
 }
