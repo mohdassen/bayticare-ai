@@ -27,6 +27,28 @@ export interface AIProvider {
   diagnoseIssue(input: { text: string; imageBase64?: string; mimeType?: string }): Promise<{ summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number }>;
 }
 
+export type AIConfiguration = {
+  enabled: boolean;
+  provider: 'openai' | 'mock';
+  model: string;
+  keyConfigured: boolean;
+  providerValue: string;
+};
+
+export function getAIConfiguration(): AIConfiguration {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  const providerValue = (process.env.AI_PROVIDER || '').trim().toLowerCase();
+  const providerAllowed = !providerValue || providerValue === 'openai';
+  const enabled = key.length > 20 && providerAllowed;
+  return {
+    enabled,
+    provider: enabled ? 'openai' : 'mock',
+    model: (process.env.OPENAI_MODEL || 'gpt-5.6').trim(),
+    keyConfigured: key.length > 20,
+    providerValue: providerValue || '(not set)',
+  };
+}
+
 const assetSchema = {
   type: 'object',
   additionalProperties: false,
@@ -71,8 +93,8 @@ function getResponseText(json: any): string {
 }
 
 class OpenAIProvider implements AIProvider {
-  private key = process.env.OPENAI_API_KEY!;
-  private model = process.env.OPENAI_MODEL || 'gpt-5.6';
+  private key = (process.env.OPENAI_API_KEY || '').trim();
+  private model = (process.env.OPENAI_MODEL || 'gpt-5.6').trim();
 
   private async visionJSON(prompt: string, base64: string, mimeType: string, name: string, schema: object) {
     const res = await fetch('https://api.openai.com/v1/responses', {
@@ -88,7 +110,11 @@ class OpenAIProvider implements AIProvider {
       }),
       signal: AbortSignal.timeout(45000)
     });
-    if (!res.ok) throw new Error(`AI provider error ${res.status}`);
+    if (!res.ok) {
+      const body = await res.text().catch(()=>'');
+      console.error('OpenAI response error', { status: res.status, body: body.slice(0, 500), model: this.model });
+      throw new Error(`AI provider error ${res.status}`);
+    }
     const json = await res.json();
     return { parsed: JSON.parse(getResponseText(json)), raw: { id: json.id, model: json.model, usage: json.usage } };
   }
@@ -110,7 +136,6 @@ class OpenAIProvider implements AIProvider {
   }
 
   async diagnoseIssue(input: { text: string }): Promise<{ summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number }> {
-    // Text diagnosis remains deliberately conservative until the richer diagnostic flow is introduced.
     return { summary: `تم استلام وصف المشكلة: ${input.text}. استخدم حجز فني مؤهل إذا استمرت المشكلة أو كان هناك خطر.`, severity: 'LOW', confidence: 0.35 };
   }
 }
@@ -128,6 +153,5 @@ class MockAIProvider implements AIProvider {
 }
 
 export function getAIProvider(): AIProvider {
-  if (process.env.OPENAI_API_KEY && (process.env.AI_PROVIDER || 'openai') === 'openai') return new OpenAIProvider();
-  return new MockAIProvider();
+  return getAIConfiguration().enabled ? new OpenAIProvider() : new MockAIProvider();
 }
