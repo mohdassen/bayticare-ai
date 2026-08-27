@@ -1,5 +1,11 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "sqlite"; url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
 
 enum Role { SUPER_ADMIN ADMIN SUPPORT_AGENT HOMEOWNER FAMILY_MEMBER PROVIDER_OWNER PROVIDER_MANAGER TECHNICIAN }
 enum PropertyType { VILLA APARTMENT TOWNHOUSE DUPLEX COMPOUND_UNIT OTHER }
