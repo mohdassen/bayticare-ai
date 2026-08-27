@@ -10,7 +10,7 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: file:./ci.db
+      DATABASE_URL: postgresql://user:password@localhost:5432/bayticare_ci
       AUTH_SECRET: ci-secret-not-for-production
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,6 @@ jobs:
           cache: npm
       - run: npm install
       - run: npm run db:generate
-      - run: npm run db:push
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
