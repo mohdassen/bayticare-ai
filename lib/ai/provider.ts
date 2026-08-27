@@ -29,42 +29,60 @@ export interface AIProvider {
 
 export type AIConfiguration = {
   enabled: boolean;
-  provider: 'openai' | 'mock';
+  provider: 'gemini' | 'openai' | 'mock';
   model: string;
   keyConfigured: boolean;
   providerValue: string;
 };
 
 export function getAIConfiguration(): AIConfiguration {
-  const key = (process.env.OPENAI_API_KEY || '').trim();
   const providerValue = (process.env.AI_PROVIDER || '').trim().toLowerCase();
-  const providerAllowed = !providerValue || providerValue === 'openai';
-  const enabled = key.length > 20 && providerAllowed;
+  const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
+  const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
+
+  if ((providerValue === 'gemini' || !providerValue) && geminiKey.length > 20) {
+    return {
+      enabled: true,
+      provider: 'gemini',
+      model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite').trim(),
+      keyConfigured: true,
+      providerValue: providerValue || '(auto)',
+    };
+  }
+
+  if ((providerValue === 'openai' || (!providerValue && !geminiKey)) && openaiKey.length > 20) {
+    return {
+      enabled: true,
+      provider: 'openai',
+      model: (process.env.OPENAI_MODEL || 'gpt-5.6').trim(),
+      keyConfigured: true,
+      providerValue: providerValue || '(auto)',
+    };
+  }
+
   return {
-    enabled,
-    provider: enabled ? 'openai' : 'mock',
-    model: (process.env.OPENAI_MODEL || 'gpt-5.6').trim(),
-    keyConfigured: key.length > 20,
+    enabled: false,
+    provider: 'mock',
+    model: providerValue === 'gemini' ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite').trim() : (process.env.OPENAI_MODEL || 'gpt-5.6').trim(),
+    keyConfigured: providerValue === 'gemini' ? geminiKey.length > 20 : openaiKey.length > 20,
     providerValue: providerValue || '(not set)',
   };
 }
 
 const assetSchema = {
   type: 'object',
-  additionalProperties: false,
   properties: {
     category: { type: ['string','null'] },
     manufacturer: { type: ['string','null'] },
     model: { type: ['string','null'] },
     serialNumber: { type: ['string','null'] },
-    confidence: { type: 'number', minimum: 0, maximum: 1 }
+    confidence: { type: 'number' }
   },
   required: ['category','manufacturer','model','serialNumber','confidence']
 };
 
 const documentSchema = {
   type: 'object',
-  additionalProperties: false,
   properties: {
     merchant: { type: ['string','null'] },
     invoiceNumber: { type: ['string','null'] },
@@ -75,7 +93,7 @@ const documentSchema = {
     price: { type: ['number','null'] },
     vat: { type: ['number','null'] },
     warrantyMonths: { type: ['number','null'] },
-    confidence: { type: 'number', minimum: 0, maximum: 1 }
+    confidence: { type: 'number' }
   },
   required: ['merchant','invoiceNumber','purchaseDate','product','model','serialNumber','price','vat','warrantyMonths','confidence']
 };
@@ -84,12 +102,71 @@ function clean<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).map(([k,v]) => [k, v === null ? undefined : v])) as T;
 }
 
-function getResponseText(json: any): string {
+function getOpenAIResponseText(json: any): string {
   if (typeof json?.output_text === 'string') return json.output_text;
   const message = Array.isArray(json?.output) ? json.output.find((x:any)=>x?.type==='message') : undefined;
   const text = message?.content?.find((x:any)=>x?.type==='output_text')?.text;
   if (typeof text === 'string') return text;
   throw new Error('AI response did not contain text output');
+}
+
+function getGeminiResponseText(json: any): string {
+  const text = json?.candidates?.[0]?.content?.parts?.find((p:any)=>typeof p?.text === 'string')?.text;
+  if (typeof text === 'string') return text;
+  throw new Error('Gemini response did not contain text output');
+}
+
+class GeminiProvider implements AIProvider {
+  private key = (process.env.GEMINI_API_KEY || '').trim();
+  private model = (process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite').trim();
+
+  private async visionJSON(prompt: string, base64: string, mimeType: string, schema: object) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.key)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [
+          { text: prompt },
+          { inlineData: { mimeType, data: base64 } }
+        ]}],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: schema,
+          temperature: 0.1
+        }
+      }),
+      signal: AbortSignal.timeout(45000)
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(()=> '');
+      console.error('Gemini response error', { status: res.status, body: body.slice(0, 500), model: this.model });
+      throw new Error(`Gemini provider error ${res.status}`);
+    }
+    const json = await res.json();
+    const parsed = JSON.parse(getGeminiResponseText(json));
+    return { parsed, raw: { model: this.model, usage: json.usageMetadata, finishReason: json?.candidates?.[0]?.finishReason } };
+  }
+
+  async scanAsset(input: { imageBase64: string; mimeType: string }): Promise<AssetScanResult> {
+    const { parsed, raw } = await this.visionJSON(
+      'Analyze this household appliance or home asset photo for BaytiCare. Read any visible label carefully. Return only data visible or strongly inferable from the image. category should be a concise English category such as Air Conditioner, Refrigerator, Washer, Water Heater, Water Pump, Water Tank, Water Filter, CCTV, or Other. Never invent model or serial numbers. confidence must be between 0 and 1 and reflect extraction confidence.',
+      input.imageBase64, input.mimeType, assetSchema
+    );
+    return { ...clean(parsed), raw } as AssetScanResult;
+  }
+
+  async scanDocument(input: { fileBase64: string; mimeType: string }): Promise<DocumentScanResult> {
+    const { parsed, raw } = await this.visionJSON(
+      'Analyze this purchase invoice, warranty card, receipt, or service document for a Saudi homeowner. Extract only fields that are visible. purchaseDate must use YYYY-MM-DD when confidently readable. price and vat should be numeric SAR amounts when present. warrantyMonths is the explicit warranty duration in months when stated. Never invent missing data. confidence must be between 0 and 1.',
+      input.fileBase64, input.mimeType, documentSchema
+    );
+    return { ...clean(parsed), raw } as DocumentScanResult;
+  }
+
+  async diagnoseIssue(input: { text: string }): Promise<{ summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number }> {
+    return { summary: `تم استلام وصف المشكلة: ${input.text}. استخدم حجز فني مؤهل إذا استمرت المشكلة أو كان هناك خطر.`, severity: 'LOW', confidence: 0.35 };
+  }
 }
 
 class OpenAIProvider implements AIProvider {
@@ -111,47 +188,38 @@ class OpenAIProvider implements AIProvider {
       signal: AbortSignal.timeout(45000)
     });
     if (!res.ok) {
-      const body = await res.text().catch(()=>'');
+      const body = await res.text().catch(()=> '');
       console.error('OpenAI response error', { status: res.status, body: body.slice(0, 500), model: this.model });
       throw new Error(`AI provider error ${res.status}`);
     }
     const json = await res.json();
-    return { parsed: JSON.parse(getResponseText(json)), raw: { id: json.id, model: json.model, usage: json.usage } };
+    return { parsed: JSON.parse(getOpenAIResponseText(json)), raw: { id: json.id, model: json.model, usage: json.usage } };
   }
 
   async scanAsset(input: { imageBase64: string; mimeType: string }): Promise<AssetScanResult> {
-    const { parsed, raw } = await this.visionJSON(
-      'Analyze this household appliance or home asset photo for BaytiCare. Read any visible label carefully. Return only data visible or strongly inferable from the image. category should be a concise English category such as Air Conditioner, Refrigerator, Washer, Water Heater, Water Pump, Water Tank, Water Filter, CCTV, or Other. Do not invent model or serial numbers. confidence must reflect overall extraction confidence.',
-      input.imageBase64, input.mimeType, 'bayticare_asset_scan', assetSchema
-    );
+    const { parsed, raw } = await this.visionJSON('Analyze this household appliance photo. Read visible labels carefully. Never invent model or serial numbers. confidence must be 0-1.', input.imageBase64, input.mimeType, 'bayticare_asset_scan', assetSchema);
     return { ...clean(parsed), raw } as AssetScanResult;
   }
-
   async scanDocument(input: { fileBase64: string; mimeType: string }): Promise<DocumentScanResult> {
-    const { parsed, raw } = await this.visionJSON(
-      'Analyze this purchase invoice, warranty card, receipt, or service document for a Saudi homeowner. Extract only fields that are actually visible. purchaseDate must use YYYY-MM-DD when confidently readable. price and vat should be numeric SAR amounts when present. warrantyMonths is the explicit warranty duration in months when stated. Never invent missing data. confidence must reflect overall extraction confidence.',
-      input.fileBase64, input.mimeType, 'bayticare_document_scan', documentSchema
-    );
+    const { parsed, raw } = await this.visionJSON('Analyze this invoice or warranty document. Extract visible data only and never invent missing values.', input.fileBase64, input.mimeType, 'bayticare_document_scan', documentSchema);
     return { ...clean(parsed), raw } as DocumentScanResult;
   }
-
   async diagnoseIssue(input: { text: string }): Promise<{ summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number }> {
     return { summary: `تم استلام وصف المشكلة: ${input.text}. استخدم حجز فني مؤهل إذا استمرت المشكلة أو كان هناك خطر.`, severity: 'LOW', confidence: 0.35 };
   }
 }
 
 class MockAIProvider implements AIProvider {
-  async scanAsset(): Promise<AssetScanResult> {
-    return { confidence: 0, raw: { mode: 'mock', message: 'Configure OPENAI_API_KEY to enable visual recognition.' } };
-  }
-  async scanDocument(): Promise<DocumentScanResult> {
-    return { confidence: 0, raw: { mode: 'mock', message: 'Configure OPENAI_API_KEY to enable document extraction.' } };
-  }
+  async scanAsset(): Promise<AssetScanResult> { return { confidence: 0, raw: { mode: 'mock', message: 'Configure GEMINI_API_KEY or OPENAI_API_KEY.' } }; }
+  async scanDocument(): Promise<DocumentScanResult> { return { confidence: 0, raw: { mode: 'mock', message: 'Configure GEMINI_API_KEY or OPENAI_API_KEY.' } }; }
   async diagnoseIssue(input: { text: string }): Promise<{ summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number }> {
     return { summary: `تم استلام وصف المشكلة: ${input.text}. يلزم تفعيل مزود AI للحصول على تحليل أعمق.`, severity: 'LOW', confidence: 0 };
   }
 }
 
 export function getAIProvider(): AIProvider {
-  return getAIConfiguration().enabled ? new OpenAIProvider() : new MockAIProvider();
+  const config = getAIConfiguration();
+  if (config.provider === 'gemini') return new GeminiProvider();
+  if (config.provider === 'openai') return new OpenAIProvider();
+  return new MockAIProvider();
 }
