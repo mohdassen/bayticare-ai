@@ -8,13 +8,15 @@ const typeLabel:Record<string,string>={VILLA:'فيلا',APARTMENT:'شقة',TOWNH
 export default async function Properties(){
   const u=await getCurrentUser();
   if(!u)redirect('/login');
-  const ps=await prisma.property.findMany({where:{ownerId:u.id},include:{_count:{select:{assets:true,rooms:true}}},orderBy:{createdAt:'asc'}});
+  const ps=await prisma.property.findMany({where:{ownerId:u.id},include:{rooms:{select:{id:true,name:true},orderBy:{name:'asc'}},_count:{select:{assets:true,rooms:true}}},orderBy:{createdAt:'asc'}});
   return <AppShell>
-    <div className="top"><div><div className="eyebrow">DIGITAL HOME TWIN</div><h1 className="pageTitle">منازلي</h1><p className="muted">أنشئ نسخة رقمية لكل منزل وتابع أجهزته وصيانته من مكان واحد.</p></div></div>
+    <div className="top"><div><div className="eyebrow">DIGITAL HOME TWIN</div><h1 className="pageTitle">منازلي</h1><p className="muted">أنشئ نسخة رقمية لكل منزل وتابع الغرف والأجهزة والصيانة من مكان واحد.</p></div></div>
 
     {ps.length ? <div className="grid">{ps.map(p=><div className="card homeCard" key={p.id}>
       <div className="homeCardTop"><div><div className="homeIcon">⌂</div><h2 style={{marginTop:16,marginBottom:6}}>{p.name}</h2><p className="muted">{p.city}{p.district?' · '+p.district:''}</p></div><span className="badge">{typeLabel[p.type] ?? p.type}</span></div>
       <div className="homeMeta"><span className="pill">◫ {p._count.assets} أصول</span><span className="pill">▦ {p._count.rooms} غرف</span></div>
+      <div style={{marginTop:16}}>{p.rooms.length?<div style={{display:'flex',gap:7,flexWrap:'wrap'}}>{p.rooms.map(r=><span className="pill" key={r.id}>🚪 {r.name}</span>)}</div>:<p className="muted" style={{fontSize:13}}>أضف الغرف لتحديد موقع كل جهاز داخل المنزل.</p>}</div>
+      <form action="/api/rooms" method="post" style={{display:'flex',gap:8,marginTop:14,position:'relative'}}><input type="hidden" name="propertyId" value={p.id}/><input name="name" placeholder="مثال: الصالة" required style={{flex:1,padding:'10px 12px',border:'1px solid #d9e3dc',borderRadius:12,background:'#fbfdfb'}}/><button className="btn small" type="submit">+ غرفة</button></form>
     </div>)}</div> : <div className="empty" style={{marginBottom:22}}><div className="homeIcon" style={{margin:'0 auto 14px'}}>⌂</div><h2>لا يوجد منزل بعد</h2><p className="muted">أضف منزلك الأول لتبدأ بتسجيل الأجهزة والضمانات وجدولة الصيانة.</p></div>}
 
     <form className="card form formCard" action="/api/properties" method="post">
