@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
 import { getAIConfiguration } from '@/lib/ai/provider';
 
 export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
   const config = getAIConfiguration();
   return NextResponse.json({
     ok: true,
@@ -14,5 +11,5 @@ export async function GET() {
     keyConfigured: config.keyConfigured,
     providerValue: config.providerValue,
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
-  });
+  }, { headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
 }
