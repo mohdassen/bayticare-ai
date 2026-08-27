@@ -1,2 +1,66 @@
-import { redirect } from 'next/navigation'; import { AppShell } from '@/components/AppShell'; import { getCurrentUser } from '@/lib/auth'; import { prisma } from '@/lib/prisma';
-export default async function Assets(){const u=await getCurrentUser();if(!u)redirect('/login');const ps=await prisma.property.findMany({where:{ownerId:u.id},include:{assets:true}});const assets=ps.flatMap(p=>p.assets.map(a=>({...a,propertyName:p.name})));return <AppShell><h1>الأصول</h1><form className="card form" action="/api/assets" method="post"><h2>إضافة أصل</h2><select name="propertyId" required>{ps.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><input name="name" placeholder="مثال: مكيف الصالة" required/><select name="category"><option>Air Conditioner</option><option>Refrigerator</option><option>Water Tank</option><option>Water Pump</option><option>Water Filter</option><option>Washer</option><option>CCTV</option><option>Other</option></select><input name="manufacturer" placeholder="الشركة المصنعة"/><input name="model" placeholder="الموديل"/><input name="maintenanceIntervalDays" type="number" placeholder="دورية الصيانة بالأيام" defaultValue="180"/><button className="btn">حفظ الأصل</button></form><div className="grid">{assets.map(a=><div className="card" key={a.id}><h2>{a.name}</h2><p>{a.category}</p><p className="muted">{a.manufacturer} {a.model}</p><span className="badge">{a.propertyName}</span></div>)}</div></AppShell>}
+import { redirect } from 'next/navigation';
+import { AppShell } from '@/components/AppShell';
+import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+type AssetRow = {
+  id: string;
+  name: string;
+  category: string;
+  manufacturer: string | null;
+  model: string | null;
+};
+
+type PropertyWithAssets = {
+  id: string;
+  name: string;
+  assets: AssetRow[];
+};
+
+type DisplayAsset = AssetRow & { propertyName: string };
+
+export default async function Assets() {
+  const u = await getCurrentUser();
+  if (!u) redirect('/login');
+
+  const ps = (await prisma.property.findMany({
+    where: { ownerId: u.id },
+    include: { assets: true },
+  })) as PropertyWithAssets[];
+
+  const assets: DisplayAsset[] = ps.flatMap((p: PropertyWithAssets) =>
+    p.assets.map((a: AssetRow) => ({ ...a, propertyName: p.name })),
+  );
+
+  return (
+    <AppShell>
+      <h1>الأصول</h1>
+      <form className="card form" action="/api/assets" method="post">
+        <h2>إضافة أصل</h2>
+        <select name="propertyId" required>
+          {ps.map((p: PropertyWithAssets) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <input name="name" placeholder="مثال: مكيف الصالة" required />
+        <select name="category">
+          <option>Air Conditioner</option><option>Refrigerator</option><option>Water Tank</option>
+          <option>Water Pump</option><option>Water Filter</option><option>Washer</option><option>CCTV</option><option>Other</option>
+        </select>
+        <input name="manufacturer" placeholder="الشركة المصنعة" />
+        <input name="model" placeholder="الموديل" />
+        <input name="maintenanceIntervalDays" type="number" placeholder="دورية الصيانة بالأيام" defaultValue="180" />
+        <button className="btn">حفظ الأصل</button>
+      </form>
+      <div className="grid">
+        {assets.map((a: DisplayAsset) => (
+          <div className="card" key={a.id}>
+            <h2>{a.name}</h2><p>{a.category}</p>
+            <p className="muted">{a.manufacturer} {a.model}</p>
+            <span className="badge">{a.propertyName}</span>
+          </div>
+        ))}
+      </div>
+    </AppShell>
+  );
+}
