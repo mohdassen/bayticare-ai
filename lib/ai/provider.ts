@@ -35,6 +35,8 @@ export type AIConfiguration = {
   providerValue: string;
 };
 
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite';
+
 export function getAIConfiguration(): AIConfiguration {
   const providerValue = (process.env.AI_PROVIDER || '').trim().toLowerCase();
   const geminiKey = (process.env.GEMINI_API_KEY || '').trim();
@@ -44,7 +46,7 @@ export function getAIConfiguration(): AIConfiguration {
     return {
       enabled: true,
       provider: 'gemini',
-      model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite').trim(),
+      model: (process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL).trim(),
       keyConfigured: true,
       providerValue: providerValue || '(auto)',
     };
@@ -63,7 +65,7 @@ export function getAIConfiguration(): AIConfiguration {
   return {
     enabled: false,
     provider: 'mock',
-    model: providerValue === 'gemini' ? (process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite').trim() : (process.env.OPENAI_MODEL || 'gpt-5.6').trim(),
+    model: providerValue === 'gemini' ? (process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL).trim() : (process.env.OPENAI_MODEL || 'gpt-5.6').trim(),
     keyConfigured: providerValue === 'gemini' ? geminiKey.length > 20 : openaiKey.length > 20,
     providerValue: providerValue || '(not set)',
   };
@@ -118,7 +120,7 @@ function getGeminiResponseText(json: any): string {
 
 class GeminiProvider implements AIProvider {
   private key = (process.env.GEMINI_API_KEY || '').trim();
-  private model = (process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite').trim();
+  private model = (process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL).trim();
 
   private async visionJSON(prompt: string, base64: string, mimeType: string, schema: object) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.key)}`;
@@ -132,8 +134,7 @@ class GeminiProvider implements AIProvider {
         ]}],
         generationConfig: {
           responseMimeType: 'application/json',
-          responseSchema: schema,
-          temperature: 0.1
+          responseSchema: schema
         }
       }),
       signal: AbortSignal.timeout(45000)
