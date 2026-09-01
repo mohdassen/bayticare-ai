@@ -1,23 +1,29 @@
+'use client';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-const links = [
-  ['/dashboard','⌂','لوحة المنزل'],
-  ['/properties','⌂','منازلي'],
-  ['/assets','◫','الأصول'],
-  ['/maintenance','✓','الصيانة'],
-  ['/services','✦','الخدمات'],
-  ['/documents','▤','الوثائق'],
-  ['/expenses','﷼','المصروفات'],
-  ['/ai','✧','المساعد الذكي'],
+const groups: { label: string; links: [string, string, string][] }[] = [
+  { label: '', links: [['/dashboard', '⌂', 'لوحة المنزل']] },
+  { label: 'منزلي', links: [['/properties', '⌂', 'منازلي'], ['/assets', '◫', 'الأصول'], ['/maintenance', '✓', 'الصيانة'], ['/documents', '▤', 'الوثائق والضمانات']] },
+  { label: 'الخدمات والتكاليف', links: [['/services', '✦', 'الخدمات'], ['/expenses', '﷼', 'المصروفات']] },
 ];
 
-export function Sidebar(){
+export function Sidebar() {
+  const pathname = usePathname();
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');
   return <aside className="sidebar">
     <div>
       <div className="brand"><div className="brandMark">B</div>Bayti<span>Care</span></div>
       <div className="sidebarSub">Home Intelligence Platform</div>
-      <nav className="nav">{links.map(([href,icon,label])=><Link key={href} href={href}><span className="navIcon">{icon}</span>{label}</Link>)}</nav>
+      {groups.map((g) => <nav className="nav" key={g.label || 'main'}>
+        {g.label && <div className="navGroupLabel">{g.label}</div>}
+        {g.links.map(([href, icon, label]) => <Link key={href} href={href} className={isActive(href) ? 'active' : ''}><span className="navIcon">{icon}</span>{label}</Link>)}
+      </nav>)}
+      <nav className="nav">
+        <div className="navGroupLabel">الذكاء الاصطناعي</div>
+        <Link href="/ai" className={'aiLink' + (isActive('/ai') ? ' active' : '')}><span className="navIcon">✧</span>المساعد الذكي<span className="navAiBadge">AI</span></Link>
+      </nav>
     </div>
-    <div className="sidebarFoot">بيتك أذكى، وصيانته أسهل.<div style={{marginTop:8,display:'flex',gap:10}}><Link href="/privacy">الخصوصية</Link><Link href="/terms">الشروط</Link></div></div>
-  </aside>
+    <div className="sidebarFoot">بيتك أذكى، وصيانته أسهل.<div style={{ marginTop: 8, display: 'flex', gap: 10 }}><Link href="/privacy">الخصوصية</Link><Link href="/terms">الشروط</Link></div></div>
+  </aside>;
 }

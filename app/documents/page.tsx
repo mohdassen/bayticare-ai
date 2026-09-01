@@ -20,6 +20,7 @@ export default async function DocumentsPage({searchParams}:Props){
   const fProperty=typeof params.property==='string'?params.property:'';
   const fAsset=typeof params.asset==='string'?params.asset:'';
   const fCategory=typeof params.category==='string'?params.category:'';
+  const quickstart=params.quickstart==='1';
   const properties=await prisma.property.findMany({where:{ownerId:user.id},include:{assets:{select:{id:true,name:true}}},orderBy:{createdAt:'desc'}});
   const allAssets=properties.flatMap(p=>p.assets.map(a=>({...a,propertyId:p.id})));
   const documents=await prisma.document.findMany({
@@ -33,7 +34,7 @@ export default async function DocumentsPage({searchParams}:Props){
     {error&&<div className="badge danger" style={{display:'block',marginBottom:16,padding:12}}>{error}</div>}
 
     <div className="grid" style={{gridTemplateColumns:'1fr 1.6fr'}}>
-      <DocumentUploadForm properties={properties} action={uploadDocument}/>
+      <DocumentUploadForm properties={properties} action={uploadDocument} autoFocus={quickstart}/>
       <div className="card">
         <div className="sectionHead"><h2>الوثائق المحفوظة</h2><span className="badge">Encrypted-ready</span></div>
         <form method="get" style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>

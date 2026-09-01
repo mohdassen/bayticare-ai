@@ -28,10 +28,13 @@ export default async function Dashboard() {
   return <AppShell>
     <div className="top">
       <div><div className="eyebrow">BAYTICARE HOME</div><h1 className="pageTitle">أهلًا {u.name.split(' ')[0]} 👋</h1><p className="muted">هذه نظرة سريعة على حالة منزلك وما يحتاج انتباهك اليوم.</p></div>
-      <Link className="btn" href="/assets">+ إضافة أصل</Link>
     </div>
 
     {!property ? <div className="empty"><h2>ابدأ بإضافة منزلك</h2><p className="muted">أنشئ النسخة الرقمية الأولى لمنزلك ثم أضف الأجهزة والأصول.</p><Link className="btn" href="/properties">إضافة منزل</Link></div> : <>
+      <div className="aiHero">
+        <div><span className="eyebrow" style={{color:'#a8e0c2'}}>✧ مسح ذكي</span><h2>صوّر جهاز أو فاتورة والذكاء الاصطناعي يعبّي البيانات لك</h2><p>قراءة تلقائية للنوع، الشركة المصنّعة، الرقم التسلسلي، والفواتير الإلكترونية السعودية (ZATCA) بدقة موثوقة.</p></div>
+        <div className="aiHeroActions"><Link className="btn" href="/assets?quickstart=1">📷 جهاز جديد</Link><Link className="btn secondary" href="/documents?quickstart=1">🧾 فاتورة أو ضمان</Link></div>
+      </div>
       <div className="card soft">
         <div className="sectionHead"><div><span className="eyebrow">{property.city}{property.district ? ` · ${property.district}`:''}</span><h2 style={{marginTop:6}}>{property.name}</h2></div><span className="badge">متصل</span></div>
         <div className="healthWrap">

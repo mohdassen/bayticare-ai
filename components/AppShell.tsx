@@ -1,18 +1,24 @@
+'use client';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
+import { QuickCapture } from './QuickCapture';
 
-const mobileLinks = [
-  ['/dashboard','⌂','الرئيسية'],
-  ['/properties','⌂','منازلي'],
-  ['/maintenance','✓','الصيانة'],
-  ['/services','✦','الخدمات'],
-  ['/ai','✧','الذكاء'],
+const mobileLinks: [string, string, string][] = [
+  ['/dashboard', '⌂', 'الرئيسية'],
+  ['/assets', '◫', 'الأصول'],
+  ['/maintenance', '✓', 'الصيانة'],
+  ['/documents', '▤', 'الوثائق'],
+  ['/ai', '✧', 'الذكاء'],
 ];
 
-export function AppShell({children}:{children:React.ReactNode}){
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');
   return <div className="shell">
-    <Sidebar/>
+    <Sidebar />
     <main className="main">{children}</main>
-    <nav className="mobileBar">{mobileLinks.map(([href,icon,label])=><Link key={href} href={href}><b>{icon}</b><span>{label}</span></Link>)}</nav>
-  </div>
+    <QuickCapture />
+    <nav className="mobileBar">{mobileLinks.map(([href, icon, label]) => <Link key={href} href={href} style={isActive(href) ? { color: 'var(--brand)' } : undefined}><b>{icon}</b><span>{label}</span></Link>)}</nav>
+  </div>;
 }
