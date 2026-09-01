@@ -91,15 +91,18 @@ const geminiDocumentSchema = {
 function clean<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).map(([k,v]) => [k, v === null ? undefined : v])) as T;
 }
-function getOpenAIResponseText(json: any): string {
+type OpenAIResponseJSON = { output_text?: unknown; output?: Array<{ type?: unknown; content?: Array<{ type?: unknown; text?: unknown }> }> };
+type GeminiResponseJSON = { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }> };
+
+function getOpenAIResponseText(json: OpenAIResponseJSON): string {
   if (typeof json?.output_text === 'string') return json.output_text;
-  const message = Array.isArray(json?.output) ? json.output.find((x:any)=>x?.type==='message') : undefined;
-  const text = message?.content?.find((x:any)=>x?.type==='output_text')?.text;
+  const message = Array.isArray(json?.output) ? json.output.find((x) => x?.type === 'message') : undefined;
+  const text = message?.content?.find((x) => x?.type === 'output_text')?.text;
   if (typeof text === 'string') return text;
   throw new Error('AI response did not contain text output');
 }
-function getGeminiResponseText(json: any): string {
-  const text = json?.candidates?.[0]?.content?.parts?.find((p:any)=>typeof p?.text === 'string')?.text;
+function getGeminiResponseText(json: GeminiResponseJSON): string {
+  const text = json?.candidates?.[0]?.content?.parts?.find((p) => typeof p?.text === 'string')?.text;
   if (typeof text === 'string') return text;
   throw new Error('Gemini response did not contain text output');
 }

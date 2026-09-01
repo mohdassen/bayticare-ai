@@ -9,9 +9,13 @@ const categoryLabels: Record<string,string> = {
   INVOICE:'فاتورة', WARRANTY:'ضمان', MANUAL:'دليل', MAINTENANCE_REPORT:'تقرير صيانة', CONTRACT:'عقد', INSURANCE:'تأمين', PROPERTY_DOCUMENT:'وثيقة عقار', OTHER:'أخرى'
 };
 
-export default async function DocumentsPage(){
+type Props={searchParams?:Promise<Record<string,string|string[]|undefined>>};
+
+export default async function DocumentsPage({searchParams}:Props){
   const user=await getCurrentUser();
   if(!user) redirect('/login');
+  const params=(await searchParams)||{};
+  const error=typeof params.error==='string'?params.error:'';
   const properties=await prisma.property.findMany({where:{ownerId:user.id},include:{assets:{select:{id:true,name:true}}},orderBy:{createdAt:'desc'}});
   const documents=await prisma.document.findMany({
     where:{property:{ownerId:user.id}},
@@ -21,6 +25,7 @@ export default async function DocumentsPage(){
 
   return <AppShell>
     <div className="top"><div><span className="eyebrow">HOME DOCUMENT VAULT</span><h1 className="pageTitle">خزنة الوثائق</h1><p className="muted">صوّر الفاتورة أو الضمان، راجع ما قرأه الذكاء الاصطناعي، ثم احفظ الأصل في سجل منزلك.</p></div><span className="badge">{documents.length} وثيقة</span></div>
+    {error&&<div className="badge danger" style={{display:'block',marginBottom:16,padding:12}}>{error}</div>}
 
     <div className="grid" style={{gridTemplateColumns:'1fr 1.6fr'}}>
       <DocumentUploadForm properties={properties} action={uploadDocument}/>

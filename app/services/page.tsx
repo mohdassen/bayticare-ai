@@ -9,9 +9,13 @@ const labels: Record<string,string> = {
 };
 const statusLabels: Record<string,string> = {REQUESTED:'مطلوب',CONFIRMED:'مؤكد',TECHNICIAN_ASSIGNED:'تم تعيين الفني',ON_THE_WAY:'في الطريق',ARRIVED:'وصل',IN_PROGRESS:'قيد التنفيذ',COMPLETED:'مكتمل',CANCELLED:'ملغي',DISPUTED:'نزاع'};
 
-export default async function ServicesPage(){
+type Props={searchParams?:Promise<Record<string,string|string[]|undefined>>};
+
+export default async function ServicesPage({searchParams}:Props){
   const user=await getCurrentUser();
   if(!user) redirect('/login');
+  const params=(await searchParams)||{};
+  const error=typeof params.error==='string'?params.error:'';
   const [properties,providers,bookings]=await Promise.all([
     prisma.property.findMany({where:{ownerId:user.id},include:{assets:{select:{id:true,name:true}}},orderBy:{createdAt:'desc'}}),
     prisma.provider.findMany({where:{status:'VERIFIED'},orderBy:[{rating:'desc'},{name:'asc'}]}),
@@ -19,6 +23,7 @@ export default async function ServicesPage(){
   ]);
   return <AppShell>
     <div className="top"><div><h1>الخدمات والحجوزات</h1><p className="muted">اطلب خدمة مرتبطة بمنزلك أو أحد أجهزتك وتابع حالتها من البداية حتى الإغلاق.</p></div><span className="badge">{bookings.filter(b=>!['COMPLETED','CANCELLED'].includes(b.status)).length} طلب نشط</span></div>
+    {error&&<div className="badge danger" style={{display:'block',marginBottom:16,padding:12}}>{error}</div>}
     <div className="grid" style={{gridTemplateColumns:'1fr 2fr'}}>
       <form className="card" action={createBooking}>
         <h2>طلب خدمة</h2>

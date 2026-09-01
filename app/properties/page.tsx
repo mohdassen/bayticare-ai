@@ -5,12 +5,17 @@ import { prisma } from '@/lib/prisma';
 
 const typeLabel:Record<string,string>={VILLA:'فيلا',APARTMENT:'شقة',TOWNHOUSE:'تاون هاوس',DUPLEX:'دوبلكس',COMPOUND_UNIT:'وحدة سكنية',OTHER:'منزل'};
 
-export default async function Properties(){
+type Props={searchParams?:Promise<Record<string,string|string[]|undefined>>};
+
+export default async function Properties({searchParams}:Props){
   const u=await getCurrentUser();
   if(!u)redirect('/login');
+  const params=(await searchParams)||{};
+  const error=typeof params.error==='string'?params.error:'';
   const ps=await prisma.property.findMany({where:{ownerId:u.id},include:{rooms:{select:{id:true,name:true},orderBy:{name:'asc'}},_count:{select:{assets:true,rooms:true}}},orderBy:{createdAt:'asc'}});
   return <AppShell>
     <div className="top"><div><div className="eyebrow">DIGITAL HOME TWIN</div><h1 className="pageTitle">منازلي</h1><p className="muted">أنشئ نسخة رقمية لكل منزل وتابع الغرف والأجهزة والصيانة من مكان واحد.</p></div></div>
+    {error&&<div className="badge danger" style={{display:'block',marginBottom:16,padding:12}}>{error}</div>}
 
     {ps.length ? <div className="grid">{ps.map(p=><div className="card homeCard" key={p.id}>
       <div className="homeCardTop"><div><div className="homeIcon">⌂</div><h2 style={{marginTop:16,marginBottom:6}}>{p.name}</h2><p className="muted">{p.city}{p.district?' · '+p.district:''}</p></div><span className="badge">{typeLabel[p.type] ?? p.type}</span></div>

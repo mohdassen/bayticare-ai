@@ -7,6 +7,10 @@ import { getCurrentUser } from '@/lib/auth';
 
 const serviceCategories = new Set(['AC','PLUMBING','ELECTRICAL','APPLIANCE_REPAIR','WATER_TANK','PEST_CONTROL','CLEANING','WATER_FILTER','CCTV','SMART_HOME','ELEVATOR','GARAGE_DOOR','OTHER']);
 
+function fail(message: string): never {
+  redirect(`/services?error=${encodeURIComponent(message)}`);
+}
+
 export async function createBooking(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -17,17 +21,17 @@ export async function createBooking(formData: FormData) {
   const category = String(formData.get('category') || '');
   const scheduledAt = String(formData.get('scheduledAt') || '').trim();
   const notes = String(formData.get('notes') || '').trim();
-  if (!serviceCategories.has(category)) throw new Error('Invalid service category');
+  if (!serviceCategories.has(category)) fail('نوع الخدمة غير صحيح.');
 
   const property = await prisma.property.findFirst({ where: { id: propertyId, ownerId: user.id }, select: { id: true } });
-  if (!property) throw new Error('Property not found');
+  if (!property) fail('تعذر إرسال الطلب. تأكد من اختيار المنزل الصحيح ثم حاول مرة أخرى.');
   if (assetId) {
     const asset = await prisma.asset.findFirst({ where: { id: assetId, propertyId }, select: { id: true } });
-    if (!asset) throw new Error('Asset not found');
+    if (!asset) fail('الأصل المحدد غير موجود في هذا المنزل.');
   }
   if (providerId) {
     const provider = await prisma.provider.findFirst({ where: { id: providerId, status: 'VERIFIED' }, select: { id: true } });
-    if (!provider) throw new Error('Provider unavailable');
+    if (!provider) fail('مزود الخدمة غير متاح حاليًا.');
   }
 
   await prisma.booking.create({
@@ -46,8 +50,8 @@ export async function cancelBooking(formData: FormData) {
   if (!user) redirect('/login');
   const id = String(formData.get('id') || '');
   const booking = await prisma.booking.findFirst({ where: { id, userId: user.id }, select: { id: true, status: true } });
-  if (!booking) throw new Error('Booking not found');
-  if (['COMPLETED','CANCELLED'].includes(booking.status)) throw new Error('Booking cannot be cancelled');
+  if (!booking) fail('تعذر العثور على الطلب.');
+  if (['COMPLETED','CANCELLED'].includes(booking.status)) fail('لا يمكن إلغاء هذا الطلب في حالته الحالية.');
   await prisma.$transaction([
     prisma.booking.update({ where: { id }, data: { status: 'CANCELLED' } }),
     prisma.bookingStatusHistory.create({ data: { bookingId: id, status: 'CANCELLED', note: 'ألغى العميل الطلب' } })
