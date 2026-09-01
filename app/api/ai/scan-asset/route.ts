@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { getAIConfiguration, getAIProvider } from '@/lib/ai/provider';
+import { rateLimit } from '@/lib/rateLimit';
 
 const allowed = new Set(['image/jpeg','image/png','image/webp']);
 
 export async function POST(req: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+  if (!user) return NextResponse.json({ error: 'انتهت جلستك. سجل الدخول مرة أخرى.' }, { status: 401 });
+  const limited = rateLimit(`ai-scan:${user.id}`, 20, 10 * 60 * 1000);
+  if (!limited.ok) return NextResponse.json({ error: 'وصلت للحد الأقصى من عمليات المسح مؤقتًا. حاول بعد قليل أو أدخل البيانات يدويًا.' }, { status: 429 });
   try {
     const form = await req.formData();
     const file = form.get('file');

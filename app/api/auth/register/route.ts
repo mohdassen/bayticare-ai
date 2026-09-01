@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/auth';
+import { rateLimit, clientKey } from '@/lib/rateLimit';
 
 const schema = z.object({
   name: z.string().trim().min(2, 'الاسم قصير جدًا'),
@@ -13,6 +14,8 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
+  const limited = rateLimit(`register:${clientKey(req)}`, 5, 15 * 60 * 1000);
+  if (!limited.ok) return NextResponse.json({ error: 'محاولات كثيرة. حاول بعد قليل.' }, { status: 429 });
   try {
     const payload = await req.json();
     const parsed = schema.safeParse(payload);

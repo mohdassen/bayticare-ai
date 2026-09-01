@@ -13,16 +13,19 @@ BaytiCare turns a household into a "Digital Home Twin": Property → Rooms → A
 - Automatic preventive maintenance scheduling: creating an asset creates its first `MaintenanceEvent`; completing one recalculates `nextMaintenanceAt` and schedules the next event
 - AI provider abstraction: **Gemini is the primary provider**, with an OpenAI fallback and a transparent mock mode when no key is configured — never fabricates data, always reports real confidence
 - AI asset photo scanner (category/manufacturer/model/serial) and AI invoice/warranty document scanner (merchant/invoice/date/price/VAT/warranty)
-- Document Vault with per-file type/size validation and a storage abstraction (`lib/storage.ts`) — local filesystem today, designed to be swapped for an S3/R2-compatible adapter without touching callers
-- Deterministic, explainable Home Health Score (`lib/health.ts`) — not AI-generated, so it's auditable
+- **ZATCA e-invoice QR verification** (`lib/zatca.ts`): decodes the standard Saudi invoice QR code as an authoritative, non-hallucinated source for merchant/total/VAT/date before falling back to AI vision
+- Document Vault with per-file type/size validation, property/asset/category filters, and an S3/R2-compatible storage adapter (`lib/storage.ts`) — activates automatically once storage credentials are set, otherwise falls back to local disk for dev
+- Deterministic, explainable Home Health Score (`lib/health.ts`) — not AI-generated, so it's auditable, with actionable per-asset reasons and CTAs on the dashboard
 - Service marketplace MVP: verified provider catalogue, booking creation/cancellation, immutable booking status history
-- Home maintenance expense dashboard (monthly/yearly/by-category/by-asset)
+- Home maintenance expense dashboard (monthly/yearly/by-category/by-asset, tracked ownership cost per asset)
+- Rate limiting on auth and AI-scan endpoints (`lib/rateLimit.ts`)
+- Privacy Policy and Terms of Use pages (`/privacy`, `/terms`)
 - `/api/health` (database) and `/api/ai/health` (AI provider readiness) — safe to poll, never leak secrets
 - GitHub Actions CI: typecheck, lint, test, build on every push/PR
 
 ## Not yet implemented (see [PRODUCT_ROADMAP.md](./PRODUCT_ROADMAP.md))
 
-Family member access/roles, provider-owner portal & technician workflow, subscription plan enforcement, notifications (email/WhatsApp), multi-property dashboard aggregation, S3/R2 file storage in production, rate limiting.
+Family member access/roles, provider-owner portal & technician workflow, subscription plan enforcement, notifications (email/WhatsApp), multi-property dashboard aggregation. S3/R2 storage code exists but needs real credentials configured in Vercel to activate (see DEPLOYMENT.md).
 
 ## Run locally
 

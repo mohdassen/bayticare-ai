@@ -38,7 +38,7 @@ export async function uploadDocument(formData: FormData) {
 
   let stored;
   try {
-    stored = await getStorageProvider().put({
+    stored = await getStorageProvider().upload({
       bytes: new Uint8Array(await file.arrayBuffer()),
       fileName: file.name,
       mimeType: file.type,
@@ -72,9 +72,10 @@ export async function deleteDocument(formData: FormData) {
   const id = String(formData.get('id') || '');
   const doc = await prisma.document.findFirst({
     where: { id, property: { ownerId: user.id } },
-    select: { id: true },
+    select: { id: true, storageKey: true },
   });
   if (!doc) fail('تعذر العثور على الوثيقة.');
   await prisma.document.delete({ where: { id } });
+  await getStorageProvider().delete(doc.storageKey).catch((error) => console.error('storage delete failed', error));
   revalidatePath('/documents');
 }

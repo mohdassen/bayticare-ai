@@ -29,5 +29,10 @@ export default function Home(){
       <div className="feature"><div className="featureIcon">✓</div><h3>صيانة قبل الأعطال</h3><p className="muted">تذكيرات ذكية توضح ما الذي يحتاج صيانة ومتى، بدل الانتظار حتى يتعطل.</p></div>
       <div className="feature"><div className="featureIcon">✧</div><h3>مساعد منزلي ذكي</h3><p className="muted">اسأل عن أجهزتك، مصروفاتك، الضمانات والمشاكل المنزلية من مكان واحد.</p></div>
     </section>
+
+    <footer style={{display:'flex',gap:16,justifyContent:'center',padding:'24px 0',fontSize:13}} className="muted">
+      <Link href="/privacy">سياسة الخصوصية</Link>
+      <Link href="/terms">شروط الاستخدام</Link>
+    </footer>
   </main>
 }

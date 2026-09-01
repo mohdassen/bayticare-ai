@@ -29,6 +29,7 @@ export default function Register(){
         <label>كلمة المرور</label><input name="password" type="password" autoComplete="new-password" minLength={8} placeholder="8 أحرف على الأقل" required/>
         {error&&<div className="badge danger" style={{display:'block',marginBottom:14,padding:12}}>{error}</div>}
         <button className="btn" style={{width:'100%'}} disabled={loading}>{loading?'جاري إنشاء الحساب...':'إنشاء الحساب'}</button>
+        <p className="muted" style={{textAlign:'center',fontSize:12,marginTop:10}}>بإنشاء الحساب فإنك توافق على <Link href="/terms">شروط الاستخدام</Link> و<Link href="/privacy">سياسة الخصوصية</Link>.</p>
         <p className="muted" style={{textAlign:'center',marginTop:18,marginBottom:0}}>لديك حساب؟ <Link href="/login" style={{color:'#0f6a48',fontWeight:800}}>تسجيل الدخول</Link></p>
       </form>
     </section>
