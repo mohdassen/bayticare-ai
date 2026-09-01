@@ -20,7 +20,9 @@ export async function POST(req:Request){
   const next=new Date(); next.setDate(next.getDate()+interval);
   const name=String(f.get('name')||'').trim();
   if(!name)fail('يرجى إدخال اسم الجهاز.');
-  const asset=await prisma.asset.create({data:{propertyId,roomId,name,category:String(f.get('category')||'Other'),manufacturer:text(f.get('manufacturer')),model:text(f.get('model')),serialNumber:text(f.get('serialNumber')),purchaseDate:date(f.get('purchaseDate')),purchasePrice:number(f.get('purchasePrice')),warrantyExpiresAt:date(f.get('warrantyExpiresAt')),maintenanceIntervalDays:interval,nextMaintenanceAt:next}});
+  const warrantyExpiresAt=date(f.get('warrantyExpiresAt'));
+  const asset=await prisma.asset.create({data:{propertyId,roomId,name,category:String(f.get('category')||'Other'),manufacturer:text(f.get('manufacturer')),model:text(f.get('model')),serialNumber:text(f.get('serialNumber')),purchaseDate:date(f.get('purchaseDate')),purchasePrice:number(f.get('purchasePrice')),warrantyExpiresAt,maintenanceIntervalDays:interval,nextMaintenanceAt:next}});
   await prisma.maintenanceEvent.create({data:{assetId:asset.id,userId:u.id,title:`صيانة ${asset.name}`,dueAt:next,status:'SCHEDULED'}});
-  redirect('/assets');
+  const params=new URLSearchParams({created:asset.name,next:next.toISOString(),warranty:warrantyExpiresAt?'1':'0'});
+  redirect(`/assets?${params.toString()}`);
 }

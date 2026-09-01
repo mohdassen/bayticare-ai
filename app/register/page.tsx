@@ -11,7 +11,7 @@ export default function Register(){
     e.preventDefault();setError('');setLoading(true);
     const f=new FormData(e.currentTarget);
     const res=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});
-    if(res.ok)r.push('/dashboard');else setError((await res.json()).error||'تعذر إنشاء الحساب');
+    if(res.ok)r.push('/properties?onboarding=1');else setError((await res.json()).error||'تعذر إنشاء الحساب');
     setLoading(false);
   }
   return <main className="authShell">

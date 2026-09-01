@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 const typeLabel:Record<string,string>={VILLA:'فيلا',APARTMENT:'شقة',TOWNHOUSE:'تاون هاوس',DUPLEX:'دوبلكس',COMPOUND_UNIT:'وحدة سكنية',OTHER:'منزل'};
+const cities=[['Riyadh','الرياض'],['Jeddah','جدة'],['Dammam','الدمام'],['Khobar','الخبر'],['Makkah','مكة المكرمة'],['Madinah','المدينة المنورة'],['Taif','الطائف'],['Abha','أبها'],['Tabuk','تبوك'],['Other','مدينة أخرى']] as const;
 
 type Props={searchParams?:Promise<Record<string,string|string[]|undefined>>};
 
@@ -27,8 +28,12 @@ export default async function Properties({searchParams}:Props){
     <form className="card form formCard" action="/api/properties" method="post">
       <div className="sectionHead"><div><div className="eyebrow">ADD PROPERTY</div><h2 style={{marginTop:6}}>إضافة منزل جديد</h2></div><span className="badge">الخطوة 1</span></div>
       <label>اسم المنزل</label><input name="name" placeholder="مثال: منزل العائلة" required/>
-      <label>نوع السكن</label><select name="type"><option value="VILLA">فيلا</option><option value="APARTMENT">شقة</option><option value="TOWNHOUSE">تاون هاوس</option><option value="DUPLEX">دوبلكس</option><option value="COMPOUND_UNIT">وحدة سكنية</option><option value="OTHER">أخرى</option></select>
-      <div className="grid two" style={{margin:'0'}}><div><label>المدينة</label><input name="city" placeholder="الرياض" defaultValue="Riyadh" required/></div><div><label>الحي</label><input name="district" placeholder="مثال: النرجس"/></div></div>
+      <div className="grid two" style={{margin:'0'}}>
+        <div><label>نوع السكن</label><select name="type"><option value="VILLA">فيلا</option><option value="APARTMENT">شقة</option><option value="TOWNHOUSE">تاون هاوس</option><option value="DUPLEX">دوبلكس</option><option value="COMPOUND_UNIT">وحدة سكنية</option><option value="OTHER">أخرى</option></select></div>
+        <div><label>حالة الملكية</label><select name="ownership"><option value="OWNED">تملك</option><option value="RENTED">إيجار</option></select></div>
+      </div>
+      <div className="grid two" style={{margin:'0'}}><div><label>المدينة</label><select name="city" defaultValue="Riyadh" required>{cities.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></div><div><label>الحي</label><input name="district" placeholder="مثال: النرجس"/></div></div>
+      <label>سنة البناء (اختياري)</label><input name="constructionYear" type="number" min="1300" max="2100" placeholder="مثال: 2018"/>
       <button className="btn">حفظ المنزل والمتابعة</button>
     </form>
   </AppShell>

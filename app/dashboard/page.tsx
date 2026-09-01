@@ -11,13 +11,14 @@ export default async function Dashboard() {
 
   const property = await prisma.property.findFirst({
     where: { ownerId: u.id },
-    include: { assets: { include: { maintenance: true } } },
+    include: { assets: { include: { maintenance: true } }, documents: { select: { assetId: true } } },
     orderBy: { createdAt: 'asc' },
   });
 
   const assets = property?.assets ?? [];
   const maintenance = assets.flatMap((a) => a.maintenance);
-  const health = calculateHomeHealth(assets, maintenance);
+  const assetIdsWithDocs = new Set((property?.documents ?? []).map((d) => d.assetId).filter((id): id is string => !!id));
+  const health = calculateHomeHealth(assets, maintenance, assetIdsWithDocs);
   const now = new Date();
   const overdue = maintenance.filter((m) => !m.completedAt && m.dueAt < now);
   const soon = maintenance.filter((m) => !m.completedAt && m.dueAt >= now).sort((a,b)=>a.dueAt.getTime()-b.dueAt.getTime()).slice(0,5);
@@ -35,8 +36,9 @@ export default async function Dashboard() {
         <div className="sectionHead"><div><span className="eyebrow">{property.city}{property.district ? ` · ${property.district}`:''}</span><h2 style={{marginTop:6}}>{property.name}</h2></div><span className="badge">متصل</span></div>
         <div className="healthWrap">
           <div className="health" style={{'--score': health.score} as React.CSSProperties}><strong>{health.score}</strong><small>/100</small></div>
-          <div className="healthText"><h3>{health.score >= 85 ? 'حالة المنزل ممتازة' : health.score >= 70 ? 'حالة المنزل جيدة' : 'المنزل يحتاج بعض الاهتمام'}</h3><p>{overdue.length ? `لديك ${overdue.length} أعمال صيانة متأخرة. إنهاؤها سيرفع صحة المنزل.` : 'لا توجد أعمال صيانة متأخرة الآن. استمر بهذا المستوى.'}</p></div>
+          <div className="healthText"><h3>{health.status}</h3><p>{overdue.length ? `لديك ${overdue.length} أعمال صيانة متأخرة. إنهاؤها سيرفع صحة المنزل.` : 'لا توجد أعمال صيانة متأخرة الآن. استمر بهذا المستوى.'}</p></div>
         </div>
+        {health.reasons.length>0&&health.reasons[0].cta&&<div className="list" style={{marginTop:14}}>{health.reasons.map((r,i)=><div className="item" key={i}><span>{r.text}</span>{r.cta&&r.href&&<Link className="btn secondary small" href={r.href}>{r.cta}</Link>}</div>)}</div>}
       </div>
 
       <div className="grid">
