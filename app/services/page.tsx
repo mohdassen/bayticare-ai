@@ -25,7 +25,7 @@ export default async function ServicesPage({searchParams}:Props){
     <div className="top"><div><h1>الخدمات والحجوزات</h1><p className="muted">اطلب خدمة مرتبطة بمنزلك أو أحد أجهزتك وتابع حالتها من البداية حتى الإغلاق.</p></div><span className="badge">{bookings.filter(b=>!['COMPLETED','CANCELLED'].includes(b.status)).length} طلب نشط</span></div>
     {error&&<div className="badge danger" style={{display:'block',marginBottom:16,padding:12}}>{error}</div>}
     <div className="grid" style={{gridTemplateColumns:'1fr 2fr'}}>
-      <form className="card" action={createBooking}>
+      <form className="card form" action={createBooking} style={{maxWidth:'none',margin:0}}>
         <h2>طلب خدمة</h2>
         {properties.length===0?<p className="muted">أضف منزلًا أولًا قبل طلب خدمة.</p>:<>
           <label>المنزل</label><select name="propertyId" required>{properties.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
