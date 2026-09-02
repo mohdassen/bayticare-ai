@@ -15,6 +15,12 @@ export async function diagnoseIssue(formData: FormData) {
     redirect(`/ai?severity=EMERGENCY&confidence=100&summary=${encodeURIComponent('قد تكون الحالة خطرة. ابتعد عن مصدر الخطر ولا تحاول الإصلاح بنفسك، واتصل بخدمة الطوارئ أو فني مختص حسب الحالة.')}`);
   }
 
-  const result = await getAIProvider().diagnoseIssue({ text });
+  let result;
+  try {
+    result = await getAIProvider().diagnoseIssue({ text });
+  } catch (error) {
+    console.error('diagnoseIssue failed', error);
+    redirect(`/ai?error=${encodeURIComponent('تعذر تحليل المشكلة الآن. يمكنك حجز فني مباشرة من صفحة الخدمات.')}`);
+  }
   redirect(`/ai?severity=${result.severity}&confidence=${Math.round(result.confidence*100)}&summary=${encodeURIComponent(result.summary)}${result.category?`&category=${encodeURIComponent(result.category)}`:''}`);
 }

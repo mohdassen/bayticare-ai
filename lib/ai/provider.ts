@@ -87,6 +87,22 @@ const geminiDocumentSchema = {
   },
   required: ['merchant','invoiceNumber','purchaseDate','product','model','serialNumber','price','vat','warrantyMonths','confidence']
 };
+const severityEnum = ['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'];
+const openAIDiagnoseSchema = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' }, severity: { type: 'string', enum: severityEnum }, category: { type: ['string','null'] }, confidence: { type: 'number' }
+  },
+  required: ['summary','severity','category','confidence']
+};
+const geminiDiagnoseSchema = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' }, severity: { type: 'string', enum: severityEnum }, category: { type: 'string', nullable: true }, confidence: { type: 'number' }
+  },
+  required: ['summary','severity','category','confidence']
+};
+const DIAGNOSE_PROMPT = 'You are a cautious home-maintenance triage assistant for a Saudi homeowner using BaytiCare. The user describes a household issue in Arabic or English. Respond ONLY in Arabic. Write a short, practical summary (2-4 sentences): likely cause(s) in plain language, and a clear next step (e.g. "احجز فني تكييف" or "راقب الحالة"). Never give definitive electrical/gas/structural safety verdicts - for anything involving electricity, gas, fire, smoke, water damage near electrical points, or structural cracks, set severity to HIGH or EMERGENCY and recommend professional inspection rather than DIY. severity: LOW routine/cosmetic, MEDIUM needs attention soon, HIGH needs prompt professional attention, EMERGENCY immediate danger. category should be a short device/system category if identifiable (e.g. "تكييف", "سباكة", "كهرباء") or null. confidence (0-1) must reflect genuine uncertainty - lower it when the description is vague.';
 
 function clean<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).map(([k,v]) => [k, v === null ? undefined : v])) as T;
@@ -126,6 +142,21 @@ class GeminiProvider implements AIProvider {
     const parsed = JSON.parse(getGeminiResponseText(json));
     return { parsed, raw: { model: this.model, usage: json.usageMetadata, finishReason: json?.candidates?.[0]?.finishReason } };
   }
+  private async textJSON(prompt: string, userText: string, schema: object) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.key)}`;
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `${prompt}\n\nUser's issue description:\n${userText}` }] }], generationConfig: { responseMimeType: 'application/json', responseSchema: schema } }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(()=> '');
+      console.error('Gemini response error', { status: res.status, body: body.slice(0, 1000), model: this.model });
+      throw new Error(`Gemini provider error ${res.status}`);
+    }
+    const json = await res.json();
+    return JSON.parse(getGeminiResponseText(json));
+  }
   async scanAsset(input: { imageBase64: string; mimeType: string }): Promise<AssetScanResult> {
     const { parsed, raw } = await this.visionJSON('Analyze this household appliance or home asset photo for BaytiCare. Read any visible label carefully. Return only data visible or strongly inferable from the image. category should be a concise English category such as Air Conditioner, Refrigerator, Washer, Water Heater, Water Pump, Water Tank, Water Filter, CCTV, or Other. Never invent model or serial numbers. confidence must be between 0 and 1 and reflect extraction confidence.', input.imageBase64, input.mimeType, geminiAssetSchema);
     return { ...clean(parsed), raw } as AssetScanResult;
@@ -135,7 +166,8 @@ class GeminiProvider implements AIProvider {
     return { ...clean(parsed), raw } as DocumentScanResult;
   }
   async diagnoseIssue(input: { text: string }): Promise<{ summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number }> {
-    return { summary: `تم استلام وصف المشكلة: ${input.text}. استخدم حجز فني مؤهل إذا استمرت المشكلة أو كان هناك خطر.`, severity: 'LOW', confidence: 0.35 };
+    const parsed = await this.textJSON(DIAGNOSE_PROMPT, input.text, geminiDiagnoseSchema);
+    return clean(parsed) as { summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number };
   }
 }
 
@@ -156,6 +188,20 @@ class OpenAIProvider implements AIProvider {
     const json = await res.json();
     return { parsed: JSON.parse(getOpenAIResponseText(json)), raw: { id: json.id, model: json.model, usage: json.usage } };
   }
+  private async textJSON(prompt: string, userText: string, name: string, schema: object) {
+    const res = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST', headers: { 'Authorization': `Bearer ${this.key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: this.model, input: [{ role: 'user', content: [{ type: 'input_text', text: `${prompt}\n\nUser's issue description:\n${userText}` }] }], text: { format: { type: 'json_schema', name, strict: true, schema } } }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(()=> '');
+      console.error('OpenAI response error', { status: res.status, body: body.slice(0, 500), model: this.model });
+      throw new Error(`AI provider error ${res.status}`);
+    }
+    const json = await res.json();
+    return JSON.parse(getOpenAIResponseText(json));
+  }
   async scanAsset(input: { imageBase64: string; mimeType: string }): Promise<AssetScanResult> {
     const { parsed, raw } = await this.visionJSON('Analyze this household appliance photo. Read visible labels carefully. Never invent model or serial numbers. confidence must be 0-1.', input.imageBase64, input.mimeType, 'bayticare_asset_scan', openAIAssetSchema);
     return { ...clean(parsed), raw } as AssetScanResult;
@@ -165,7 +211,8 @@ class OpenAIProvider implements AIProvider {
     return { ...clean(parsed), raw } as DocumentScanResult;
   }
   async diagnoseIssue(input: { text: string }): Promise<{ summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number }> {
-    return { summary: `تم استلام وصف المشكلة: ${input.text}. استخدم حجز فني مؤهل إذا استمرت المشكلة أو كان هناك خطر.`, severity: 'LOW', confidence: 0.35 };
+    const parsed = await this.textJSON(DIAGNOSE_PROMPT, input.text, 'bayticare_diagnose_issue', openAIDiagnoseSchema);
+    return clean(parsed) as { summary: string; severity: 'LOW'|'MEDIUM'|'HIGH'|'EMERGENCY'; category?: string; confidence: number };
   }
 }
 
