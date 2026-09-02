@@ -3,12 +3,7 @@ import QRCode from 'qrcode';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { PrintButton } from '@/components/PrintButton';
-
-function appBaseUrl() {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://bayticare-ai.vercel.app';
-}
+import { appBaseUrl } from '@/lib/url';
 
 export default async function AssetLabelPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();

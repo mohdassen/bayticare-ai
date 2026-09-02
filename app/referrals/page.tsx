@@ -3,12 +3,7 @@ import { AppShell } from '@/components/AppShell';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { CopyLinkButton } from '@/components/CopyLinkButton';
-
-function appBaseUrl() {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://bayticare-ai.vercel.app';
-}
+import { appBaseUrl } from '@/lib/url';
 
 export default async function ReferralsPage() {
   const user = await getCurrentUser();
