@@ -106,6 +106,17 @@ function isS3Configured(): boolean {
   return !!(process.env.STORAGE_ENDPOINT && process.env.STORAGE_BUCKET && process.env.STORAGE_ACCESS_KEY_ID && process.env.STORAGE_SECRET_ACCESS_KEY);
 }
 
+/**
+ * Whether file uploads can actually succeed right now. Local disk writes
+ * fail on Vercel's read-only filesystem outside /tmp, so without S3/R2
+ * credentials configured, production uploads are guaranteed to fail. Used
+ * to show an upfront warning instead of letting the user fill out the whole
+ * form only to hit a storage error at the end.
+ */
+export function isPersistentStorageAvailable(): boolean {
+  return isS3Configured() || process.env.NODE_ENV !== 'production';
+}
+
 export function getStorageProvider(): StorageProvider {
   if (isS3Configured()) return new S3StorageProvider();
   if (process.env.NODE_ENV === 'production') {

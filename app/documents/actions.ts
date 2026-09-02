@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { getStorageProvider } from '@/lib/storage';
+import { getStorageProvider, isPersistentStorageAvailable } from '@/lib/storage';
 import { DocumentCategory } from '@prisma/client';
 
 const categories = new Set<string>(Object.values(DocumentCategory));
@@ -16,6 +16,7 @@ function fail(message: string): never {
 export async function uploadDocument(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+  if (!isPersistentStorageAvailable()) fail('رفع الوثائق غير مفعّل مؤقتًا على هذا الخادم. راجع فريق التطوير.');
 
   const propertyId = String(formData.get('propertyId') || '');
   const assetIdRaw = String(formData.get('assetId') || '').trim();
@@ -49,19 +50,26 @@ export async function uploadDocument(formData: FormData) {
     fail('تعذر رفع الملف. تأكد أن الصيغة والحجم مدعومان (JPG, PNG, WEBP, PDF بحد أقصى 10MB).');
   }
 
-  await prisma.document.create({
-    data: {
-      propertyId,
-      assetId,
-      name,
-      originalName: file.name,
-      category: categoryRaw as DocumentCategory,
-      storageKey: stored.key,
-      mimeType: stored.mimeType,
-      sizeBytes: stored.sizeBytes,
-      expiresAt: expiresAtRaw ? new Date(expiresAtRaw) : null,
-    },
-  });
+  const expiresAt = expiresAtRaw && !Number.isNaN(Date.parse(expiresAtRaw)) ? new Date(expiresAtRaw) : null;
+  try {
+    await prisma.document.create({
+      data: {
+        propertyId,
+        assetId,
+        name,
+        originalName: file.name,
+        category: categoryRaw as DocumentCategory,
+        storageKey: stored.key,
+        mimeType: stored.mimeType,
+        sizeBytes: stored.sizeBytes,
+        expiresAt,
+      },
+    });
+  } catch (error) {
+    console.error('document record save failed', error);
+    await getStorageProvider().delete(stored.key).catch(() => {});
+    fail('تعذر حفظ بيانات الوثيقة الآن. حاول مرة أخرى.');
+  }
 
   revalidatePath('/documents');
 }
