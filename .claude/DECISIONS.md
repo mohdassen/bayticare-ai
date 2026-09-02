@@ -31,3 +31,13 @@ Impact: Re-evaluate when a Next 16 upgrade is otherwise on the roadmap for other
 Decision: No production database migration tooling switch (still `prisma db push`, not `prisma migrate`) despite the risk noted in DEPLOYMENT.md/SECURITY.md.
 Reason: Switching requires baselining the existing production schema as the first migration — a one-time action that should be deliberately reviewed with real DB access, not done opportunistically mid-feature-work.
 Impact: Any future schema change (e.g. adding `plan` to `User` for subscription entitlements) still needs a manual, reviewed `db push` until this switch happens.
+
+---
+Decision: Added `Referral` and `ProviderReview` models (schema.prisma) without a coordinated `db push` — this session has no production DATABASE_URL access. Every code path that touches either new table is wrapped in try/catch (`referrals` page, register route's referral log, `submitReview` action, services page's reviewed-status lookup) and degrades to "feature not active yet" rather than crashing.
+Reason: Ship the referral-program and provider-rating UI now without risking a production outage from querying tables that don't exist in the real DB yet.
+Impact: Referral tracking and provider ratings are inert (silently no-op / show "قيد الإعداد") until someone runs `npx prisma db push` against production. Once that runs, both features activate with no further code changes. Do not remove the defensive try/catch wrappers even after the push — they're also the correct posture for any future schema drift.
+
+---
+Decision: Monthly Home Health Report (`/api/cron/monthly-report`, `vercel.json` cron) requires `CRON_SECRET` to be set or the endpoint refuses to run (503), and email sending itself is a no-op (console log only) until `RESEND_API_KEY` is set (`lib/email.ts`).
+Reason: Same "ship the architecture, activate on credential" pattern as storage/S3 — no email provider account exists yet, and an unauthenticated cron endpoint that emails every user is not something to leave open even briefly.
+Impact: The `/reports` in-app page and "send now" button work immediately (reflect live data), but nobody actually receives an email — including from the monthly cron — until both env vars are set in Vercel.

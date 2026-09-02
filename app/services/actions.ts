@@ -45,6 +45,30 @@ export async function createBooking(formData: FormData) {
   revalidatePath('/services');
 }
 
+export async function submitReview(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  const bookingId = String(formData.get('bookingId') || '');
+  const rating = Number(formData.get('rating') || 0);
+  const comment = String(formData.get('comment') || '').trim().slice(0, 500) || null;
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) fail('يرجى اختيار تقييم من 1 إلى 5.');
+
+  const booking = await prisma.booking.findFirst({ where: { id: bookingId, userId: user.id }, select: { id: true, status: true, providerId: true } });
+  if (!booking) fail('تعذر العثور على الطلب.');
+  if (booking.status !== 'COMPLETED') fail('يمكن تقييم الخدمة بعد اكتمالها فقط.');
+  if (!booking.providerId) fail('لا يوجد مزود مرتبط بهذا الطلب.');
+
+  try {
+    await prisma.providerReview.create({ data: { bookingId, providerId: booking.providerId, userId: user.id, rating, comment } });
+    const agg = await prisma.providerReview.aggregate({ where: { providerId: booking.providerId }, _avg: { rating: true } });
+    await prisma.provider.update({ where: { id: booking.providerId }, data: { rating: agg._avg.rating || rating } });
+  } catch (error) {
+    console.error('review submit failed', error);
+    fail('تعذر حفظ التقييم الآن. حاول مرة أخرى لاحقًا.');
+  }
+  revalidatePath('/services');
+}
+
 export async function cancelBooking(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');

@@ -1,16 +1,23 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function Register(){
+  return <Suspense fallback={null}><RegisterForm/></Suspense>;
+}
+
+function RegisterForm(){
   const r=useRouter();
+  const searchParams=useSearchParams();
+  const ref=searchParams.get('ref')||'';
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(false);
   async function submit(e:React.FormEvent<HTMLFormElement>){
     e.preventDefault();setError('');setLoading(true);
     const f=new FormData(e.currentTarget);
-    const res=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});
+    const payload={...Object.fromEntries(f),ref};
+    const res=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(res.ok)r.push('/properties?onboarding=1');else setError((await res.json()).error||'تعذر إنشاء الحساب');
     setLoading(false);
   }
@@ -23,6 +30,7 @@ export default function Register(){
     <section className="authPanel">
       <form className="card form" onSubmit={submit}>
         <div className="eyebrow">CREATE ACCOUNT</div><h1 style={{fontSize:36,marginTop:8}}>إنشاء حساب</h1><p className="muted">ابدأ مجانًا، ويمكنك إضافة منزلك مباشرة بعد التسجيل.</p>
+        {ref&&<div className="badge" style={{display:'block',marginBottom:14,padding:12}}>👥 دعاك صديق لتجربة BaytiCare!</div>}
         <label>الاسم</label><input name="name" autoComplete="name" placeholder="محمد" required/>
         <label>البريد الإلكتروني</label><input name="email" type="email" autoComplete="email" placeholder="name@example.com" required/>
         <label>رقم الجوال</label><input name="phone" inputMode="tel" autoComplete="tel" placeholder="05xxxxxxxx"/>

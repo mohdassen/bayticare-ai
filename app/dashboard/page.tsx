@@ -28,6 +28,7 @@ export default async function Dashboard() {
   return <AppShell>
     <div className="top">
       <div><div className="eyebrow">BAYTICARE HOME</div><h1 className="pageTitle">أهلًا {u.name.split(' ')[0]} 👋</h1><p className="muted">هذه نظرة سريعة على حالة منزلك وما يحتاج انتباهك اليوم.</p></div>
+      <Link href="/services?urgent=1" className="btn" style={{background:'linear-gradient(135deg,#c54848,#a73636)'}}>🚨 حالة طارئة</Link>
     </div>
 
     {!property ? <div className="empty"><h2>ابدأ بإضافة منزلك</h2><p className="muted">أنشئ النسخة الرقمية الأولى لمنزلك ثم أضف الأجهزة والأصول.</p><Link className="btn" href="/properties">إضافة منزل</Link></div> : <>

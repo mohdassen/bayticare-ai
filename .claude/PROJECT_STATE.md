@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: 2026-09-02
+Last updated: 2026-09-02 (growth-features batch)
 
 ## Current state
 
@@ -16,6 +16,7 @@ Stable, deployed, verified live at https://bayticare-ai.vercel.app. Core loop (r
 - Document Vault with property/asset/category filters; S3/R2 storage adapter built (see Blockers).
 - CI (typecheck/lint/test/build) green on every push; `npm run build` succeeds locally and on Vercel.
 - Redesigned nav (grouped sidebar, active-state highlighting) + global "Quick Capture" FAB making AI scanning reachable from any page — verified visually via screenshot on desktop + mobile viewport.
+- Growth-features batch (this update): emergency-booking button (`/services?urgent=1`), Home Passport printable property report (`/properties/[id]/passport`), asset detail page + printable QR label (`/assets/[id]`, `/assets/[id]/label`, needs `qrcode` pkg), monthly Home Health Report (`/reports`, `/api/cron/monthly-report`, `vercel.json` cron, `lib/email.ts` — inert until `RESEND_API_KEY`+`CRON_SECRET` set), referral program (`/referrals`, `?ref=` capture on register), provider ratings (`submitReview` in `services/actions.ts`). Referral/rating features need `Referral`/`ProviderReview` tables pushed to production — see Blockers.
 
 ## Not started / known gaps
 
@@ -31,13 +32,16 @@ UX/IA overhaul (2026-09-02): AI-first dashboard hero, global quick-capture FAB, 
 
 ## Next action
 
-1. User needs to configure real Cloudflare R2 credentials in Vercel (`STORAGE_ENDPOINT`/`STORAGE_BUCKET`/`STORAGE_ACCESS_KEY_ID`/`STORAGE_SECRET_ACCESS_KEY`) — the adapter is ready, just not activated in prod yet.
-2. Family access enforcement (no migration needed, `PropertyMember` table already exists).
+1. **Run `npx prisma db push` against production** (needs `DATABASE_URL`) to activate the referral program and provider ratings — code is already deployed and defensively degrades until then.
+2. User needs to configure real Cloudflare R2 credentials in Vercel (`STORAGE_ENDPOINT`/`STORAGE_BUCKET`/`STORAGE_ACCESS_KEY_ID`/`STORAGE_SECRET_ACCESS_KEY`) — the adapter is ready, just not activated in prod yet.
+3. User needs `RESEND_API_KEY` + `EMAIL_FROM` + `CRON_SECRET` in Vercel to activate the monthly report email (both scheduled and the manual "send now" button).
+4. Family access enforcement (no migration needed, `PropertyMember` table already exists).
 
 ## Blockers
 
-- No production `DATABASE_URL`/Vercel dashboard access from this session — can't run a reviewed Prisma migration for subscription entitlements, can't inspect Vercel build/runtime logs directly (verification is done via HTTP polling + live browser smoke tests instead).
+- No production `DATABASE_URL`/Vercel dashboard access from this session — can't run `prisma db push` (needed for Referral/ProviderReview tables), can't inspect Vercel build/runtime logs directly (verification is done via HTTP polling + live browser smoke tests instead).
 - R2/Cloudflare bucket + API token creation is an external action only the user can do.
+- Resend (or equivalent email provider) account + API key is an external action only the user can do.
 
 ## Verification
 

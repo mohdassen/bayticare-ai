@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { AppShell } from '@/components/AppShell';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -23,6 +24,7 @@ export default async function Properties({searchParams}:Props){
       <div className="homeMeta"><span className="pill">◫ {p._count.assets} أصول</span><span className="pill">▦ {p._count.rooms} غرف</span></div>
       <div style={{marginTop:16}}>{p.rooms.length?<div style={{display:'flex',gap:7,flexWrap:'wrap'}}>{p.rooms.map(r=><span className="pill" key={r.id}>🚪 {r.name}</span>)}</div>:<p className="muted" style={{fontSize:13}}>أضف الغرف لتحديد موقع كل جهاز داخل المنزل.</p>}</div>
       <form action="/api/rooms" method="post" style={{display:'flex',gap:8,marginTop:14,position:'relative'}}><input type="hidden" name="propertyId" value={p.id}/><input name="name" placeholder="مثال: الصالة" required style={{flex:1,padding:'10px 12px',border:'1px solid #d9e3dc',borderRadius:12,background:'#fbfdfb'}}/><button className="btn small" type="submit">+ غرفة</button></form>
+      <Link href={`/properties/${p.id}/passport`} className="btn ghost small" style={{marginTop:10,display:'inline-block',textAlign:'center'}}>📄 جواز سفر المنزل</Link>
     </div>)}</div> : <div className="empty" style={{marginBottom:22}}><div className="homeIcon" style={{margin:'0 auto 14px'}}>⌂</div><h2>لا يوجد منزل بعد</h2><p className="muted">أضف منزلك الأول لتبدأ بتسجيل الأجهزة والضمانات وجدولة الصيانة.</p></div>}
 
     <form className="card form formCard" action="/api/properties" method="post">

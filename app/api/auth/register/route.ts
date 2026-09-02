@@ -11,6 +11,7 @@ const schema = z.object({
   email: z.string().trim().email('البريد الإلكتروني غير صحيح'),
   phone: z.string().trim().optional(),
   password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
+  ref: z.string().trim().optional(),
 });
 
 export async function POST(req: Request) {
@@ -46,6 +47,14 @@ export async function POST(req: Request) {
         passwordHash: await bcrypt.hash(d.password, 12),
       },
     });
+
+    if (d.ref && d.ref !== user.id) {
+      // Best-effort: the Referral table needs `prisma db push` to exist in
+      // production yet. Never let this block or fail registration.
+      await prisma.referral
+        .create({ data: { referrerId: d.ref, refereeEmail: email, refereeUserId: user.id } })
+        .catch((error) => console.error('referral log failed (non-blocking)', error));
+    }
 
     await createSession(user.id);
     return NextResponse.json({ ok: true });

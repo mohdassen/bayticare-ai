@@ -14,6 +14,7 @@ export function QuickCapture() {
       <small>مسح ذكي فوري — صوّر وسنملأ البيانات لك</small>
       <button type="button" onClick={() => go('/assets?quickstart=1')}>📷 جهاز جديد</button>
       <button type="button" onClick={() => go('/documents?quickstart=1')}>🧾 فاتورة أو ضمان</button>
+      <button type="button" style={{color:'#a73636'}} onClick={() => go('/services?urgent=1')}>🚨 حالة طارئة</button>
     </div>}
     <button type="button" className="quickFab" onClick={() => setOpen((o) => !o)} aria-label="مسح ذكي">{open ? '×' : '✧'}</button>
   </div>;

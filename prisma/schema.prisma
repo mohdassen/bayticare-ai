@@ -94,6 +94,9 @@ model User {
   propertyMemberships PropertyMember[]
   maintenanceEvents   MaintenanceEvent[]
   bookings            Booking[]
+  referralsMade       Referral[]         @relation("ReferralsMade")
+  referralReceived    Referral?          @relation("ReferralReceived")
+  providerReviews     ProviderReview[]
 }
 
 model Property {
@@ -225,6 +228,7 @@ model Provider {
   phone       String?
   categories  String         @default("")
   bookings    Booking[]
+  reviews     ProviderReview[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 }
@@ -245,6 +249,7 @@ model Booking {
   asset       Asset?                 @relation(fields: [assetId], references: [id], onDelete: SetNull)
   provider    Provider?              @relation(fields: [providerId], references: [id], onDelete: SetNull)
   history     BookingStatusHistory[]
+  review      ProviderReview?
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 
@@ -261,4 +266,31 @@ model BookingStatusHistory {
   booking   Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId, createdAt])
+}
+
+model Referral {
+  id            String   @id @default(cuid())
+  referrerId    String
+  refereeEmail  String
+  refereeUserId String?  @unique
+  createdAt     DateTime @default(now())
+  referrer      User     @relation("ReferralsMade", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeUser   User?    @relation("ReferralReceived", fields: [refereeUserId], references: [id], onDelete: SetNull)
+
+  @@index([referrerId])
+}
+
+model ProviderReview {
+  id         String   @id @default(cuid())
+  providerId String
+  bookingId  String   @unique
+  userId     String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
 }

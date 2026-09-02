@@ -6,6 +6,7 @@ const groups: { label: string; links: [string, string, string][] }[] = [
   { label: '', links: [['/dashboard', '⌂', 'لوحة المنزل']] },
   { label: 'منزلي', links: [['/properties', '⌂', 'منازلي'], ['/assets', '◫', 'الأصول'], ['/maintenance', '✓', 'الصيانة'], ['/documents', '▤', 'الوثائق والضمانات']] },
   { label: 'الخدمات والتكاليف', links: [['/services', '✦', 'الخدمات'], ['/expenses', '﷼', 'المصروفات']] },
+  { label: 'أخرى', links: [['/reports', '⎙', 'التقرير الشهري'], ['/referrals', '👥', 'ادعُ صديق']] },
 ];
 
 export function Sidebar() {
